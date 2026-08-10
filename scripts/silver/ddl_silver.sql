@@ -38,3 +38,17 @@ CREATE TABLE silver.core_banking_transactions (
     dwh_load_date          DATETIME2 DEFAULT GETDATE()
 );
 GO
+
+-- Nonclustered index on CustomerID: the PK above is on TransactionID, so
+-- without this, every join from transactions back to a customer (used
+-- heavily when loading gold.fact_transactions) forces a full table scan
+-- across 1M+ rows. This is the single biggest cheap win before touching
+-- the gold layer.
+CREATE NONCLUSTERED INDEX IX_core_banking_transactions_CustomerID
+    ON silver.core_banking_transactions (CustomerID);
+GO
+
+CREATE NONCLUSTERED INDEX IX_core_banking_transactions_dq_flag
+    ON silver.core_banking_transactions (dq_flag)
+    INCLUDE (transaction_datetime, TransactionAmount, CustAccountBalance, balance_tier);
+GO
